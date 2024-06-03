@@ -11,20 +11,22 @@ const ChatWindow: React.FC = () => {
     };
 
     return (
-        <Box
-            display="flex"
-            flexDirection="column"
-            height="90vh"
-            width="100%"
-            maxWidth="600px"
-            p={2}
-            boxShadow={3}
-            borderRadius="16px"
-            bgcolor="white"
-        >
-            <Typography variant="h4" gutterBottom>Global Chat</Typography>
-            <MessageList messages={messages} />
-            <MessageInput onSendMessage={handleSendMessage} />
+        <Box display="flex" justifyContent="center" alignItems="center" height="100vh" width={"100%"} sx={{ backdropFilter: "blur(5px)" }}>
+            <Box
+                display="flex"
+                flexDirection="column"
+                height="90vh"
+                width="100%"
+                maxWidth="600px"
+                p={2}
+                boxShadow={3}
+                borderRadius="16px"
+                bgcolor="white"
+            >
+                <Typography variant="h4" gutterBottom>Global Chat</Typography>
+                <MessageList messages={messages} />
+                <MessageInput onSendMessage={handleSendMessage} />
+            </Box>
         </Box>
     );
 };
