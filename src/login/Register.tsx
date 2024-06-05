@@ -1,16 +1,101 @@
 import React, { useState } from 'react';
-import { Box, TextField, Button, Typography, Avatar } from '@mui/material';
-import {Link} from "react-router-dom";
+import {Box, TextField, Button, Typography, Avatar, Backdrop} from '@mui/material';
+import {Link, useNavigate} from "react-router-dom";
+import AuthorizationService from "../service/AuthorizationService";
+import ReactLoading from "react-loading";
+import {AxiosError} from "axios";
+import AccountService from "../service/AccountService";
+// @ts-ignore
+import Cookies from "js-cookie";
 
 const Register: React.FC = () => {
+    const navigate = useNavigate();
+
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [avatar, setAvatar] = useState<string | ArrayBuffer | null>(null);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [registerStatus, setRegisterStatus] = useState(false);
 
-    const handleRegister = (event: React.FormEvent) => {
+    function dataURLtoFile(dataurl: string, filename: string) {
+        // @ts-ignore
+        let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new File([u8arr], filename, {type:mime});
+    }
+
+    const handleRegister = async (event: React.FormEvent) => {
         event.preventDefault();
-        console.log(`Username: ${username}, Email: ${email}, Password: ${password}, Avatar: ${avatar}`);
+
+        const usernameRegex = /^[a-z0-9]+$/i;
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+        if (!username) {
+            setErrorMessage('Username is required');
+            return;
+        }
+
+        if (!usernameRegex.test(username)) {
+            setErrorMessage('Username can only contain letters from a-z and numbers from 0-9');
+            return;
+        }
+
+        if (!email) {
+            setErrorMessage('Email is required');
+            return;
+        }
+
+        if (!emailRegex.test(email)) {
+            setErrorMessage('Invalid email format');
+            return;
+        }
+
+        if (!password) {
+            setErrorMessage('Password is required');
+            return;
+        }
+
+        if (!avatar) {
+            setErrorMessage('Avatar is required');
+            return;
+        }
+
+        setRegisterStatus(true);
+
+        try {
+            const registerResponse = await AuthorizationService.register(username, email, password);
+
+            if (registerResponse instanceof AxiosError) {
+                // @ts-ignore
+                setErrorMessage(registerResponse.response.data.message);
+                setRegisterStatus(false);
+                return;
+            }
+
+            let avatarFile = dataURLtoFile(avatar as string, 'avatar.png');
+
+            let userId = Cookies.get('userId');
+
+            const avatarResponse = await AccountService.setAvatar(avatarFile, userId);
+
+            if (avatarResponse instanceof AxiosError) {
+                // @ts-ignore
+                console.log(avatarResponse);
+                setErrorMessage(registerResponse.response.data.message);
+                setRegisterStatus(false);
+                return;
+            }
+
+            navigate("/login");
+        } catch (error) {
+            console.error(error);
+            setErrorMessage('An error occurred while registering');
+            setRegisterStatus(false);
+        }
     };
 
     const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,6 +117,9 @@ const Register: React.FC = () => {
             height="100vh"
             width="100%"
         >
+            {registerStatus && <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={true}>
+                <ReactLoading type={"bars"} color={"white"} height={'10%'} width={'10%'} />
+            </Backdrop>}
             <Box
                 component="form"
                 onSubmit={handleRegister}
@@ -47,6 +135,7 @@ const Register: React.FC = () => {
                 mb={3}
             >
                 <Typography variant="h4">Register</Typography>
+                {errorMessage && <Typography color="error">{errorMessage}</Typography>}
                 <label htmlFor="avatar-upload">
                     <input
                         accept="image/*"
@@ -57,7 +146,7 @@ const Register: React.FC = () => {
                     />
                     <Avatar
                         src={avatar as string}
-                        sx={{width: "80px", height: "80px", border: "2px solid #0081FB"}} // Dodajemy niebieską obwódkę
+                        sx={{width: "80px", height: "80px", border: "2px solid #0081FB"}}
                     />
                 </label>
                 <TextField

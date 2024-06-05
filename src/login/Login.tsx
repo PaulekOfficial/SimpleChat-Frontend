@@ -1,15 +1,39 @@
 import React, { useState } from 'react';
-import { Box, TextField, Button, Typography } from '@mui/material';
-import { Link } from 'react-router-dom'; // Import Link
+import {Box, TextField, Button, Typography, Backdrop} from '@mui/material';
+import {Link, useNavigate} from 'react-router-dom';
+import AuthorizationService from "../service/AuthorizationService";
+import {AxiosError} from "axios";
+import ReactLoading from "react-loading";
 
 const Login: React.FC = () => {
+    const navigate = useNavigate();
+
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [loginStatus, setLoginStatus] = useState(false);
 
-    const handleLogin = (event: React.FormEvent) => {
+    const handleLogin = async (event: React.FormEvent) => {
         event.preventDefault();
-        // Handle login logic here
-        console.log(`Username: ${username}, Password: ${password}`);
+
+        setLoginStatus(true);
+
+        try {
+            const loginResult = await AuthorizationService.login(username, password);
+
+            if (loginResult instanceof AxiosError) {
+                // @ts-ignore
+                setErrorMessage(loginResult.response.data.message);
+                setLoginStatus(false);
+                return;
+            }
+
+            navigate("/");
+        } catch (error) {
+            console.error(error);
+            setLoginStatus(false);
+            setErrorMessage('An error occurred while logging in');
+        }
     };
 
     return (
@@ -20,6 +44,9 @@ const Login: React.FC = () => {
             height="100vh"
             width="100%"
         >
+            {loginStatus && <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={true}>
+                <ReactLoading type={"bars"} color={"white"} height={'10%'} width={'10%'} />
+            </Backdrop>}
             <Box
                 component="form"
                 onSubmit={handleLogin}
@@ -35,6 +62,7 @@ const Login: React.FC = () => {
                 mb={3}
             >
                 <Typography variant="h4">Login</Typography>
+                {errorMessage && <Typography color="error">{errorMessage}</Typography>}
                 <TextField
                     label="Username"
                     variant="outlined"
