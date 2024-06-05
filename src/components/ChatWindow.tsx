@@ -4,17 +4,31 @@ import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 // @ts-ignore
 import Cookies from "js-cookie";
+import AccountService from "../service/AccountService";
 
 const ChatWindow: React.FC = () => {
     const [messages, setMessages] = useState<Array<{ text: string, imgUrl?: string, isUserMessage: boolean }>>([]);
     const [ws, setWs] = useState<WebSocket | null>(null);
+    const [avatar, setAvatar] = useState('');
 
     useEffect(() => {
         const clientId = Cookies.get('userId');
+
+         AccountService.getAvatar(clientId).then((av) => {
+            setAvatar(URL.createObjectURL(av.data));
+        });
+
         const ws = new WebSocket(`ws://localhost:8080/chat`);
 
         ws.onopen = function open() {
             console.log('connected');
+
+            const authToSend = {
+                userId: Cookies.get("userId"),
+                token: Cookies.get("token"),
+                type: 'authorization'
+            };
+            ws.send(JSON.stringify(authToSend));
         };
 
         ws.onclose = function close() {
@@ -22,7 +36,19 @@ const ChatWindow: React.FC = () => {
         };
 
         ws.onmessage = function incoming(data) {
-            console.log(data);
+            const message = JSON.parse(data.data);
+
+            AccountService.getAvatar(message.userId).then((av) => {
+                const messageForList = {
+                    text: message.message,
+                    imgUrl: URL.createObjectURL(av.data),
+                    isUserMessage: false
+                };
+
+                setMessages(prevMessages => [...prevMessages, messageForList]);
+            }).catch((err) => {
+                console.log(err);
+            });
         };
 
         setWs(ws);
@@ -34,9 +60,18 @@ const ChatWindow: React.FC = () => {
 
     const handleSendMessage = (message: { text: string, imgUrl?: string, isUserMessage: boolean }) => {
         if (ws) {
-            ws.send(JSON.stringify(message));
+            const messageToSend = {
+                userId: Cookies.get("userId"),
+                message: message.text,
+                timestamp: Date.now(),
+                type: 'text'
+            };
+            ws.send(JSON.stringify(messageToSend));
         }
-        setMessages([...messages, message]);
+
+        message.imgUrl = avatar;
+
+        setMessages(prevMessages => [...prevMessages, message]);
     };
 
     return (

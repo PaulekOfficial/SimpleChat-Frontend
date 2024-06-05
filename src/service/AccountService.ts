@@ -39,7 +39,7 @@ class AccountService {
         }
     }
 
-    static async getAvatar(id: number): Promise<string> {
+    static async getAvatar(id: number): Promise<any> {
         try {
             const httpResponse = await AuthorizationService.authorizedAxios().get(API_URL + id + '/avatar', { responseType: 'blob' });
             return httpResponse;
